@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>デジタル化・AI導入補助金2026 申請対象チェッカー</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+      .tt { @apply relative inline-flex items-center cursor-help mx-1; }
+      .tt .tt-txt { @apply invisible opacity-0 transition-opacity absolute z-50 w-64 p-3 bg-gray-800 text-white text-sm bottom-full left-1/2 mb-2 pointer-events-none; }
+      .tt:hover .tt-txt { @apply visible opacity-100; }
+      .btn { @apply px-6 py-2 transition-colors border text-center; }
+      .btn-y { @apply bg-blue-100 text-blue-700 border-blue-300 hover:bg-blue-200; }
+      .btn-n { @apply bg-red-100 text-red-700 border-red-300 hover:bg-red-200; }
+      .chat-b { @apply max-w-[85%] md:max-w-[70%] px-5 py-3 mb-4 border leading-relaxed; }
+      @keyframes fadeInUp {
+        0% { opacity: 0; transform: translateY(15px); }
+        100% { opacity: 1; transform: translateY(0); }
+      }
+      .animate-fade-in-up {
+        animation: fadeInUp 0.4s ease-out forwards;
+      }
+    }
+  </style>
+</head>
+
+<body class="bg-white text-gray-800 m-0 p-0 font-sans h-screen flex overflow-hidden">
+    <div id="app" class="flex w-full h-full">
+
+        <!-- PC Sidebar -->
+        <div
+            class="hidden md:flex w-72 bg-gradient-to-b from-blue-50 to-green-50 border-r border-gray-200 flex-col p-5">
+            <h1
+                class="text-xl mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-green-500 leading-tight">
+                申請対象<br>チェッカー</h1>
+            <p class="text-sm text-gray-600 mb-6">デジタル化・AI導入補助金2026(通常枠)の申請対象となるか、対話形式で確認します。</p>
+            <button @click="reset" class="btn bg-white text-gray-700 border-gray-300 w-full mb-4">最初からやり直す</button>
+            <div class="text-xs text-gray-500 mt-auto">※本結果は目安であり、実際の採択を保証するものではありません。詳細は公募要領をご確認ください。</div>
+        </div>
+
+        <!-- SP Drawer Menu -->
+        <div v-if="s.menu" class="md:hidden absolute inset-0 bg-white z-10 flex flex-col p-5">
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-green-500">
+                    メニュー</h1>
+                <button @click="s.menu = false" class="p-2 text-2xl text-gray-600">×</button>
+            </div>
+            <button @click="reset(); s.menu = false"
+                class="btn bg-gray-100 text-gray-700 border-gray-300 w-full mb-4">最初からやり直す</button>
+            <p class="text-xs text-gray-500 mt-auto">※本結果は目安です。</p>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col h-full overflow-hidden relative z-50">
+            <!-- SP Header -->
+            <div
+                class="md:hidden flex justify-between items-center p-3 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-green-50">
+                <div class="bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-green-500">
+                    申請対象チェッカー</div>
+                <button @click="s.menu = !s.menu" class="p-2 border border-gray-300 bg-white">≡</button>
+            </div>
+
+            <!-- Chat Area -->
+            <div class="flex-1 overflow-y-auto px-6 py-16 pb-24" ref="chatArea" v-show="!s.done">
+                <div v-for="(c, i) in s.chat" :key="i" class="flex flex-col animate-fade-in-up">
+
+                    <div v-if="c.type === 'bot'" class="chat-b bg-gray-50 border-gray-200 self-start">
+                        <p class="whitespace-pre-wrap">{{ c.text }}</p>
+                        <div v-if="c.q" class="mt-2">
+                            <p class="mb-2">
+                                {{ c.q.q }}
+                                <span class="tt text-sm text-blue-600 underline">出典<span
+                                        class="tt-txt font-normal text-left whitespace-pre-wrap z-50">{{ c.q.src
+                                        }}</span></span>
+                                <span class="tt text-sm text-green-600 underline">ヘルプ<span
+                                        class="tt-txt font-normal text-left whitespace-pre-wrap z-50">{{ c.q.help
+                                        }}</span></span>
+                            </p>
+                            <div class="mt-4 flex gap-3" v-if="i === s.chat.length - 1">
+                                <button @click="ans(true)" class="btn btn-y flex-1">Yes</button>
+                                <button @click="ans(false)" class="btn btn-n flex-1">No</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-else
+                        class="chat-b bg-gradient-to-r from-blue-100 to-green-100 border-blue-200 self-end text-right text-gray-700">
+                        {{ c.text }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Result Area -->
+            <div class="flex-1 overflow-y-auto p-4 md:p-8 pb-24" v-show="s.done">
+                <h2 class="text-2xl mb-6 bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-green-500">
+                    判定結果</h2>
+
+                <div
+                    class="mb-8 md:text-xl p-6 bg-gradient-to-r from-blue-50 to-green-50 border border-blue-200 text-center leading-relaxed">
+                    あなたはデジタル化・ＡＩ導入補助金２０２６（通常枠）の<br>
+                    <span :class="s.qs.every(x => x.ans) ? 'text-blue-700 text-2xl' : 'text-red-600 text-2xl'">
+                        {{ s.qs.every(x => x.ans) ? '対象の可能性があります' : '対象ではない可能性があります' }}
+                    </span>
+                </div>
+
+                <div class="border border-gray-200 overflow-x-auto">
+                    <table class="w-full text-sm text-left">
+                        <thead class="bg-gray-50 border-b border-gray-200">
+                            <tr>
+                                <th class="p-4 w-1/2">質問</th>
+                                <th class="p-4 w-16 text-center">回答</th>
+                                <th class="p-4 min-w-[250px]">ドキュメントソース</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="q in s.qs" :key="q.id" class="border-b border-gray-100">
+                                <td class="p-4 font-medium">{{ q.q }}</td>
+                                <td class="p-4 text-center text-lg" :class="q.ans ? 'text-blue-600' : 'text-red-600'">{{
+                                    q.ans ? 'Yes' : 'No' }}</td>
+                                <td class="p-4 text-xs text-gray-600 whitespace-pre-wrap leading-relaxed">{{ q.src }}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- SP Bottom Nav -->
+            <div
+                class="md:hidden absolute bottom-0 w-full border-t border-gray-200 bg-white flex justify-center p-3 z-40">
+                <button @click="reset"
+                    class="btn bg-gradient-to-r from-blue-400 to-green-400 text-white border-transparent w-full max-w-sm">最初からやり直す</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const {createApp, ref, nextTick} = Vue;
+
+        const initQs = () => [
+            {id: 1, q: "日本国内で事業を営む中小企業・小規模事業者（法人または個人事業主）ですか？", src: "2-1-1(2)(ア)\n交付申請時点において、日本国内で法人登記され事業を営み、かつ国内に補助事業の実施場所を有する法人又は個人であること。\n2-1-2(9)\n法人格のない任意団体は対象外", help: "法人は国内登記、個人は国内事業実態が必要です。NPO法人等は対象ですが、サークル等の任意団体は対象外です。", ans: null},
+            {id: 2, q: "直近の事業場内の最低賃金は、法令上の地域別最低賃金以上ですか？", src: "2-1-1(2)(イ)\n交付申請の直近月において、申請者が営む事業場内の最低賃金が法令上の地域別最低賃金以上であること。", help: "従業員に支払う最も低い賃金が、都道府県の定める最低賃金を下回っていないか確認してください。", ans: null},
+            {id: 3, q: "「みなし大企業」や、過去3年の年平均課税所得が15億円を超える事業者に該当しませんか？", src: "2-1-2(1)\n大企業が株式の1/2以上を所有する、大企業の役員が半数以上を占める等のみなし大企業、又は確定している直近過去3年分の課税所得の年平均額が15億円を超える場合は対象外。", help: "大企業の実質的な支配下にある場合や、年平均15億円超の課税所得がある場合は対象外です。該当しない場合はYesを選択してください。", ans: null},
+            {id: 4, q: "みなし同一法人（親会社が50%超の議決権を持つ子会社や、代表者・住所が同じ別法人など）として、既に本補助金に申請（または申請予定）している事業者に該当しませんか？", src: "2-1-2(2)\nみなし同一法人においては１社のみでしか申請が認められない。\n①親会社が議決権の50％超を有する子会社が存在する場合\n②個人が複数の会社のそれぞれの議決権を50％超を保有する場合\n③代表者及び住所が同じ法人、主要株主及び住所が同じ法人、実質的支配者が同じ法人の場合", help: "代表者や住所が同じ別法人などが既に申請している場合は、重複して申請できません。該当しない場合はYesを選択してください。", ans: null},
+            {id: 5, q: "本補助金の「IT導入支援事業者」として登録されていませんか？", src: "2-1-2(3)\n「IT導入支援事業者（構成員を含む。）」に登録されている事業者又は登録を行おうとする事業者は対象外。（みなし同一法人の適用あり）", help: "ITツールを提供する側の事業者（IT導入支援事業者）が、自ら補助事業者になることはできません。該当しない場合はYesを選択してください。", ans: null},
+            {id: 6, q: "風俗営業、宗教法人のいずれにも該当しませんか？", src: "2-1-2(5)(8)\n風俗営業等の規制及び業務の適正化等に関する法律第2条各項に規定する営業を営む事業者（一部旅館業除く）、宗教法人は対象外。", help: "風俗営業や宗教法人は対象外です（旅館業法に基づく許可を受けた旅館業は除く）。該当しない場合はYesを選択してください。", ans: null},
+            {id: 7, q: "過去1年以内に労働関係法令違反による送検処分を受けたり、反社会的勢力に関係していませんか？", src: "2-1-2(6)(7)\n過去1年において労働関係法令違反により送検処分を受けている事業者、暴力団等の反社会的勢力に関係する事業者は対象外。", help: "法令遵守要件です。送検処分や反社会的勢力との関わりがない場合はYesを選択してください。", ans: null},
+            {id: 8, q: "経済産業省や中小機構から補助金交付等の停止措置を受けておらず、また他の補助金等で不正行為を行ったことはありませんか？", src: "2-1-2(4)(10)\n経済産業省又は中小機構から補助金交付等停止措置又は指名停止措置が講じられている事業者\n他の補助金等において不正行為等を行った事業者は対象外。", help: "補助金の交付停止措置を受けている場合や、過去の補助金で不正行為があった場合は対象外です。該当しない場合はYesを選択してください。", ans: null},
+            {id: 9, q: "「SECURITY ACTION」の「★一つ星」または「★★二つ星」の宣言を行う予定、または実施済みですか？", src: "2-1-1(2)(エ)\n独立行政法人情報処理推進機構 (IPA)が実施する「SECURITY ACTION」の「★ 一つ星」又は「★★ 二つ星」いずれかの宣言を行うこと。", help: "情報セキュリティ対策に取り組む自己宣言制度です。交付申請時に宣言済アカウントIDの入力が必要です。", ans: null},
+            {id: 10, q: "労働生産性を向上させる、3年間の事業計画を策定し実行できますか？", src: "2-1-1(2)(ク)\n1年後に労働生産性を3%（又は4%）以上向上、事業計画期間において年平均成長率3%（又は4%）以上向上させる事業計画を策定し実行すること。", help: "IT導入により、営業利益や人件費等から計算される「労働生産性」を一定割合以上向上させる計画の策定・実行が必要です。", ans: null},
+            {id: 11, q: "「GビズIDプライム」のアカウントを取得していますか？", src: "2-1-1(2)(ウ)\nGビズIDプライムを取得していること。", help: "本補助金の交付申請を行うには、事前にGビズIDプライムアカウントの取得が必須となります。", ans: null},
+            {id: 12, q: "本補助金で申請する事業内容は、国や独立行政法人の他の補助金等と重複していませんか？", src: "2-1-1(2)(キ)\n国及び独立行政法人中小企業基盤整備機構その他の独立行政法人の他の補助金等と重複する事業については、補助事業の対象として含んでいないこと。", help: "同一のITツールの導入など、同じ事業内容で他の補助金と重複して受給することはできません。重複していない場合はYesを選択してください。", ans: null},
+            {id: 13, q: "ITツール導入後、生産性向上に係る情報（営業利益や人件費等）を期限内に事務局に報告することに同意できますか？", src: "2-1-1(2)(ケ)\nIT導入支援事業者と確認を行ったうえで、生産性向上に係る情報等を事務局に報告すること。", help: "事業実施後、決められた期間において経営数値等の「事業実施効果の報告」を行う義務があります。", ans: null},
+            {id: 14, q: "申請者自身が管理する携帯電話番号を登録し、事務局からの連絡や調査（事例調査、立入調査等）に協力できますか？", src: "2-1-1(2)(カ)(サ)(ソ)\n必ず申請者自身が管理する1つの携帯電話番号を登録すること。\n事例の調査協力、立入調査等への協力を要請された場合には協力すること。", help: "第三者の連絡先登録は不可です。また、事業期間中や事後に事務局等からのヒアリングや立入調査の要請があった場合は協力する必要があります。", ans: null},
+            {id: 15, q: "事業計画期間において、従業員向けの「賃金引上げ計画」を策定し、交付申請時点で従業員へ表明できますか？（※適用外となる一部の医療・介護・学校法人等を除く）", src: "2-1-1(2)(テ)(ト)(ナ)\n事業計画期間において、1人当たり給与支給総額の年平均成長率を向上させること等。\n交付申請時点で、賃金引上げ計画を従業員に表明していること。", help: "申請額等に応じて給与総額や最低賃金の引き上げ目標を計画し、交付申請時点で従業員に表明している必要があります。達成できなかった場合、補助金返還のリスクがあります。", ans: null},
+            {id: 16, q: "申請時等に提供する情報が、中小企業庁の「データ利活用ポリシー」に則り行政機関等で利用されることに同意できますか？", src: "2-1-1(2)(ツ)\n本補助金の申請時等に提供された情報は、中小企業庁関連事業データ利活用ポリシーに則り、行政機関等に提供・利用されることに同意すること。", help: "提出されたデータは効果的な政策立案や経営支援等（オープンデータ化含む）のために利用される場合があります。", ans: null},
+            {id: 17, q: "IT導入補助金2025の「通常枠」や「複数社連携IT導入枠」で交付決定を受けた場合、交付決定日からまだ12ヶ月を経過していないということはありませんか？", src: "（４） 申請単位と申請回数\n※ ＩＴ導入補助金２０２５の通常枠及び複数社連携ＩＴ導入枠で交付決定を受けた事業者（グループ構成員を含む。）は、交付決定日から１２カ月以内にデジタル化・ＡＩ導入補助金２０２６の通常枠で申請することはできない。", help: "前回の交付決定から12ヶ月経過していない場合、本枠には申請できません。該当しない（または受給していない）場合はYesを選択してください。", ans: null},
+            {id: 18, q: "過去（2022～2025年）や今年の別枠において、「サイバーセキュリティお助け隊サービス」のITツールで交付決定を受けたり、現在申請を行っていたりしませんか？", src: "（４） 申請単位と申請回数\n※ 「サイバーセキュリティお助け隊サービス」の登録を受けたＩＴツールについて、ＩＴ導入補助金２０２２、２０２３、２０２４及び２０２５において、いずれかの枠で交付決定を受けた場合又はデジタル化・ＡＩ導入補助金２０２６において、いずれかの枠で申請を行っている若しくは交付決定を受けた場合、本事業の申請を行うことはできない。", help: "サイバーセキュリティ関連で既に補助対象となっている、または申請中の場合は申請できません。該当しない場合はYesを選択してください。", ans: null},
+            {id: 19, q: "過去（2024または2025年）にIT導入補助金で導入したITツールと、今回導入するITツールの機能（プロセス）が完全に重複していませんか？", src: "３） ＩＴ導入補助金２０２４又はＩＴ導入補助金２０２５において交付決定を受けたソフトウェアのプロセスと、今回導入するソフトウェアが有するプロセスが重複する事業者\n※ なお、プロセスが完全に一致する場合、不採択とする", help: "過去に導入したものと完全に一致する機能のツールを再度補助金で導入することはできません。異なるプロセスの場合はYesを選択してください。", ans: null},
+            {id: 20, q: "申請するITツール代金に、リース・レンタル契約（一部除く）、中古品、交付決定前に購入した費用などは含まれていませんか？", src: "（４） 補助対象外となる経費\n(キ) リース・レンタル契約のＩＴツール。（サイバーセキュリティお助け隊サービスを除く。）\n(ク) 中古品。\n(ケ) 交付決定前に購入したＩＴツール。", help: "事前の購入や中古品、リース契約等は原則として補助対象外となります。含まれていない場合はYesを選択してください。", ans: null},
+            {id: 21, q: "ポイント還元や現金でのキャッシュバック、関係者間での資金還流など、実質的にITツールの購入費用を減額したり無償にするような取引を行っていませんか？", src: "【補足５】 不正な交付申請及び補助金等の不正な使用と定義される具体例\n・ ポイント・クーポン等（現金に交換可能なものを含む。）の発行・利用を行うことでＩＴツールの購入額を減額・無償とすることにより、購入額を証明する証憑に記載の金額と実質的に支払われた金額が一致しないもの。\n・ ＩＴツールの購入額の全部又は一部に相当する金額を口座振込や現金により申請者へ払い戻すこと\n・ 第三者を含む関係者間で紹介料やコンサル料等の名目でその資金を還流させるなど", help: "キックバックや資金の還流による実質的な値引き行為は不正使用とみなされます。行っていない場合はYesを選択してください。", ans: null},
+            {id: 22, q: "導入するITツールに、ハードウェア機器が含まれていませんか？（またはソフトウェアとハードウェアが一体で切り分け困難なものではありませんか？）", src: "該当する機能例と注意点\n①顧客対応・販売支援\nただし、ソフトウェアのみが対象であり、ハードウェア部分は対象外とする。また、ソフトウェアとハードウェアが一体となっており、切り分けが困難な場合も対象外とする。\n（※無人受付システム等でも同様の記載あり）", help: "本枠で補助対象となるのはソフトウェアのみです。ハードウェアが含まれる場合や一体で切り離せない場合は対象外です。ソフトウェアのみの場合はYesを選択してください。", ans: null},
+            {id: 23, q: "導入するツールは「単なるデータ入力・保存・表示」のみの機能や「顧客側画面のスクラッチ（新規）開発」ではなく、業務プロセス効率化に資するものですか？", src: "該当する機能例と注意点\n単なる営業活動の情報を保有・表示する機能は対象外とする。\n顧客側画面を新規制作する費用は、スクラッチ開発に該当するため対象外とする。\n仕訳機能や会計ソフトへの連携機能がなく、経費費目と金額を入力・表示するだけのものは対象外とする。", help: "単なる記録や入力だけのシステムや、専用の新規開発費用は対象外です。業務効率化・分析機能等がある場合はYesを選択してください。", ans: null}
+        ];
+
+        createApp({
+            setup() {
+                const s = ref({qs: [], idx: 0, chat: [], done: false, menu: false});
+                const chatArea = ref(null);
+
+                const reset = () => {
+                    s.value = {qs: initQs(), idx: 0, chat: [], done: false, menu: false};
+                    s.value.chat.push({type: 'bot', text: 'デジタル化・AI導入補助金2026(通常枠)の対象になるか、申請対象外要件をもとに確認します。\n質問にYes/Noでお答えください。'});
+                    s.value.chat.push({type: 'bot', q: s.value.qs[0]});
+                };
+
+                const ans = (val) => {
+                    s.value.qs[s.value.idx].ans = val;
+                    s.value.chat.push({type: 'user', text: val ? 'Yes' : 'No'});
+                    s.value.idx++;
+
+                    if (s.value.idx < s.value.qs.length) {
+                        s.value.chat.push({type: 'bot', q: s.value.qs[s.value.idx]});
+                    } else {
+                        setTimeout(() => s.value.done = true, 600);
+                    }
+
+                    nextTick(() => {
+                        if (chatArea.value) chatArea.value.scrollTop = chatArea.value.scrollHeight;
+                    });
+                };
+
+                reset();
+
+                return {s, ans, reset, chatArea};
+            }
+        }).mount('#app');
+    </script>
+</body>
+
+</html>
